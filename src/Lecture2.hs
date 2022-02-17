@@ -16,6 +16,7 @@ Unlike exercises to Lecture 1, this module also contains more
 challenging exercises. You don't need to solve them to finish the
 course but you can if you like challenges :)
 -}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Lecture2
     ( -- * Normal
@@ -48,7 +49,7 @@ zero, you can stop calculating product and return 0 immediately.
 84
 -}
 lazyProduct :: [Int] -> Int
-lazyProduct = error "TODO"
+lazyProduct = foldl (*) 1
 
 {- | Implement a function that duplicates every element in the list.
 
@@ -58,7 +59,10 @@ lazyProduct = error "TODO"
 "ccaabb"
 -}
 duplicate :: [a] -> [a]
-duplicate = error "TODO"
+duplicate [] = []
+duplicate [x] = [x, x]
+duplicate (x:xs) = duplicate [x] ++ duplicate xs  
+
 
 {- | Implement function that takes index and a list and removes the
 element at the given position. Additionally, this function should also
@@ -81,7 +85,10 @@ lists of even lengths.
 ♫ NOTE: Use eta-reduction and function composition (the dot (.) operator)
   in this function.
 -}
-evenLists = error "TODO"
+evenLists :: [[a]] -> [[a]]
+evenLists [] = [[]]
+evenLists [x] = if even(length x) then [x] else []
+evenLists (x : xs) = evenLists [x] ++ evenLists xs
 
 {- | The @dropSpaces@ function takes a string containing a single word
 or number surrounded by spaces and removes all leading and trailing
