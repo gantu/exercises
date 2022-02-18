@@ -49,7 +49,9 @@ zero, you can stop calculating product and return 0 immediately.
 84
 -}
 lazyProduct :: [Int] -> Int
-lazyProduct = foldl (*) 1
+lazyProduct [] = error "Empty list"
+lazyProduct [x] = x
+lazyProduct (x:xs) = if x == 0 then 0 else x * lazyProduct xs 
 
 {- | Implement a function that duplicates every element in the list.
 
@@ -74,7 +76,13 @@ return the removed element.
 >>> removeAt 10 [1 .. 5]
 (Nothing,[1,2,3,4,5])
 -}
-removeAt = error "TODO"
+removeAt :: Int -> [a] -> (Maybe a, [a]) 
+removeAt _ [] = (Nothing, [])
+removeAt 0 (x:xs) = (Just x, xs)
+removeAt n (x:xs) = (a, x: b)
+  where
+    (a, b) = removeAt (n - 1) xs
+
 
 {- | Write a function that takes a list of lists and returns only
 lists of even lengths.
@@ -87,7 +95,7 @@ lists of even lengths.
 -}
 evenLists :: [[a]] -> [[a]]
 evenLists [] = [[]]
-evenLists [x] = if even(length x) then [x] else []
+evenLists [x] = if even $ length x then [x] else []
 evenLists (x : xs) = evenLists [x] ++ evenLists xs
 
 {- | The @dropSpaces@ function takes a string containing a single word
@@ -104,7 +112,11 @@ spaces.
 
 🕯 HINT: look into Data.Char and Prelude modules for functions you may use.
 -}
-dropSpaces = error "TODO"
+dropSpaces :: String -> String
+dropSpaces [] = []
+dropSpaces [' '] = []
+dropSpaces [x] = [x]
+dropSpaces (x : xs) = dropSpaces [x] ++ dropSpaces xs
 
 {- |
 
@@ -164,6 +176,19 @@ data Knight = Knight
     , knightEndurance :: Int
     }
 
+data Chest = Chest 
+    { gold :: Int
+    , treasure :: Bool
+    }
+
+data DragonType
+  = Red 
+  | Black
+  | Green
+
+data Dragon = Dragon
+  { dragonType  :: DragonType
+  ,}
 dragonFight = error "TODO"
 
 ----------------------------------------------------------------------------
