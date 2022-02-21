@@ -40,6 +40,7 @@ module Lecture2
     , eval
     , constantFolding
     ) where
+import Control.Arrow (Arrow(first, second))
 
 {- | Implement a function that finds a product of all the numbers in
 the list. But implement a lazier version of this function: if you see
@@ -49,9 +50,9 @@ zero, you can stop calculating product and return 0 immediately.
 84
 -}
 lazyProduct :: [Int] -> Int
-lazyProduct [] = error "Empty list"
+lazyProduct [] = 1
 lazyProduct [x] = x
-lazyProduct (x:xs) = if x == 0 then 0 else x * lazyProduct xs 
+lazyProduct (x:xs) = if x == 0 then 0 else x * lazyProduct xs
 
 {- | Implement a function that duplicates every element in the list.
 
@@ -63,7 +64,7 @@ lazyProduct (x:xs) = if x == 0 then 0 else x * lazyProduct xs
 duplicate :: [a] -> [a]
 duplicate [] = []
 duplicate [x] = [x, x]
-duplicate (x:xs) = duplicate [x] ++ duplicate xs  
+duplicate (x:xs) = duplicate [x] ++ duplicate xs
 
 
 {- | Implement function that takes index and a list and removes the
@@ -76,7 +77,7 @@ return the removed element.
 >>> removeAt 10 [1 .. 5]
 (Nothing,[1,2,3,4,5])
 -}
-removeAt :: Int -> [a] -> (Maybe a, [a]) 
+removeAt :: Int -> [a] -> (Maybe a, [a])
 removeAt _ [] = (Nothing, [])
 removeAt 0 (x:xs) = (Just x, xs)
 removeAt n (x:xs) = (a, x: b)
@@ -94,7 +95,7 @@ lists of even lengths.
   in this function.
 -}
 evenLists :: [[a]] -> [[a]]
-evenLists [] = [[]]
+evenLists [] = []
 evenLists [x] = if even $ length x then [x] else []
 evenLists (x : xs) = evenLists [x] ++ evenLists xs
 
@@ -176,19 +177,19 @@ data Knight = Knight
     , knightEndurance :: Int
     }
 
-data Chest = Chest 
+data Chest = Chest
     { gold :: Int
     , treasure :: Bool
     }
 
 data DragonType
-  = Red 
+  = Red
   | Black
   | Green
 
 data Dragon = Dragon
   { dragonType  :: DragonType
-  ,}
+  }
 dragonFight = error "TODO"
 
 ----------------------------------------------------------------------------
@@ -210,7 +211,10 @@ False
 True
 -}
 isIncreasing :: [Int] -> Bool
-isIncreasing = error "TODO"
+isIncreasing [] = True
+isIncreasing [_] = True
+isIncreasing (x1:x2:xs) = if x1 < x2 then (True && isIncreasing (x2:xs)) else False
+
 
 {- | Implement a function that takes two lists, sorted in the
 increasing order, and merges them into new list, also sorted in the
@@ -223,7 +227,13 @@ verify that.
 [1,2,3,4,7]
 -}
 merge :: [Int] -> [Int] -> [Int]
-merge = error "TODO"
+merge [] [] = []
+merge [] ys = ys
+merge xs [] = xs
+merge [x] [y] = if x < y then [x, y] else [y, x]
+merge (x:xs) [y] = if y < x then [y,x] ++ xs else [x] ++ merge xs [y]
+merge [x] (y:ys) = if x < y then [x,y] ++ ys else [y] ++ merge [x] ys
+merge xs (y:ys) = merge (merge xs [y]) ys
 
 {- | Implement the "Merge Sort" algorithm in Haskell. The @mergeSort@
 function takes a list of numbers and returns a new list containing the
@@ -239,8 +249,19 @@ The algorithm of merge sort is the following:
 >>> mergeSort [3, 1, 2]
 [1,2,3]
 -}
+
+half :: [a] -> ([a], [a])
+half xs =
+    ((take s xs), drop s xs)
+    where
+        s = (length xs ) `div` 2
+
 mergeSort :: [Int] -> [Int]
-mergeSort = error "TODO"
+mergeSort l
+  | null l = []
+  | length l == 1 = [head l]
+  | length l == 2 = if head l < head (tail l) then [head l, head $ tail l] else [head $ tail l, head l]
+  | otherwise = merge (mergeSort (fst $ half l)) (mergeSort (snd $ half l))
 
 
 {- | Haskell is famous for being a superb language for implementing
@@ -292,8 +313,23 @@ data EvalError
 {- | Having all this set up, we can finally implement an evaluation function.
 It returns either a successful evaluation result or an error.
 -}
+containsT :: [(String, Int)] -> String -> Bool
+containsT [] _ = False
+containsT [x] a = fst x == a
+containsT (x:xs) a = containsT [x] a || containsT xs a
+
 eval :: Variables -> Expr -> Either EvalError Int
-eval = error "TODO"
+eval _ (Lit x) = Right x
+eval vars (Add a b) = case (r1, r2) of
+  (Left err, _) -> Left err
+  (_, Left err) -> Left err
+  (Right result1, Right result2) -> Right $ result1 + result2
+  where
+    r1 = eval vars a
+    r2 = eval vars b
+eval vars (Var v) = case lookup v vars of
+  Just num -> Right num
+  Nothing  -> Left $ VariableNotFound $ v ++ ""
 
 {- | Compilers also perform optimizations! One of the most common
 optimizations is "Constant Folding". It performs arithmetic operations
@@ -316,5 +352,19 @@ x + 45 + y
 Write a function that takes and expression and performs "Constant
 Folding" optimization on the given expression.
 -}
+
+collectLiteralsAndVars :: Expr -> (Int, [String]) -> (Int, [String])
+collectLiteralsAndVars (Lit 0) (l, vars) = (l, vars)
+collectLiteralsAndVars (Lit x) (l, vars) = (l + x, vars)
+collectLiteralsAndVars (Var x) (l, vars) = (l, x : vars)
+collectLiteralsAndVars (Add expr1 expr2) (l, vars) = collectLiteralsAndVars expr2 (collectLiteralsAndVars expr1 (l, vars))
+
+buildResult :: (Int, [String]) -> Expr
+buildResult (acc , []) = Lit acc
+buildResult (0, [x]) = Var x
+buildResult (0, [x, y]) = Add (Var x) (Var y)
+buildResult (acc, [x]) = Add (Lit acc) (Var x)
+buildResult (acc, x:y:xs) = Add (Lit acc) (buildResult(0, x:y:xs))
+
 constantFolding :: Expr -> Expr
-constantFolding = error "TODO"
+constantFolding expr = buildResult $ collectLiteralsAndVars expr (0,[])
