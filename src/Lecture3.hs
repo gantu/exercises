@@ -37,6 +37,7 @@ module Lecture3
     ) where
 import Data.List (nub)
 import GHC.List (foldl1')
+import Data.Semigroup ()
 
 -- $setup
 
@@ -199,9 +200,10 @@ together only different elements.
 Product {getProduct = 6}
 
 -}
+
 appendDiff3 :: (Semigroup a, Eq a) => a -> a -> a -> a
-appendDiff3 a b c = foldl1' (<>) . nub $ [a ,b, c]
-  
+appendDiff3 a b c = foldl1' (<>) . nub $ [a, b, c]
+
 {-
 
 In the next block of tasks, implement 'Foldable' instances for all
@@ -237,13 +239,13 @@ types that can have such an instance.
 -- instance Foldable Reward where
 instance Foldable List1 where
   foldr :: (a -> b -> b) -> b -> List1 a -> b
-  foldr f start (List1 x xs) = foldr f (f x start) xs 
-  
+  foldr f start (List1 x xs) = foldr f (f x start) xs
+
 instance Foldable Treasure where
   foldr _ start NoTreasure = start
   foldr f start (SomeTreasure x) = f x start
 
-  foldMap _ NoTreasure = mempty 
+  foldMap _ NoTreasure = mempty
   foldMap f (SomeTreasure x) = f x
 
 {-
@@ -259,8 +261,14 @@ types that can have such an instance.
 -- instance Functor Weekday where
 -- instance Functor Gold where
 -- instance Functor Reward where
--- instance Functor List1 where
--- instance Functor Treasure where
+instance Functor List1 where
+  fmap :: (a -> b) -> List1 a -> List1 b
+  fmap f (List1 x xs) = List1 (f x) (fmap f xs)
+
+instance Functor Treasure where
+  fmap :: (a -> b) -> Treasure a -> Treasure b
+  fmap _ NoTreasure = NoTreasure
+  fmap f (SomeTreasure a) = SomeTreasure $ f a
 
 {- | Functions are first-class values in Haskell. This means that they
 can be even stored inside other data types as well!
@@ -279,4 +287,6 @@ Just [8,9,10]
 [8,20,3]
 
 -}
-apply = error "TODO"
+
+apply :: Functor f => t -> f (t -> b) -> f b
+apply v = fmap (\x -> x v)
