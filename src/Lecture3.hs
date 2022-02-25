@@ -1,4 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 {- |
 Module                  : Lecture3
@@ -33,10 +35,11 @@ module Lecture3
     , appendDiff3
     , apply
     ) where
-
+import Data.List (nub)
+import GHC.List (foldl1')
 
 -- $setup
--- >>> import Data.Semigroup
+
 
 {- | Let's define a simple enumeration data type for representing days
 of the week.
@@ -49,7 +52,7 @@ data Weekday
     | Friday
     | Saturday
     | Sunday
-    deriving (Show, Eq)
+    deriving (Show, Eq, Enum, Ord )
 
 {- | Write a function that will display only the first three letters
 of a weekday.
@@ -57,7 +60,10 @@ of a weekday.
 >>> toShortString Monday
 "Mon"
 -}
-toShortString = error "TODO"
+
+toShortString :: Weekday -> String
+toShortString w = take 3 (show w)
+
 
 {- | Write a function that returns next day of the week, following the
 given day.
@@ -79,7 +85,9 @@ Tuesday
   would work for **any** enumeration type in Haskell (e.g. 'Bool',
   'Ordering') and not just 'Weekday'?
 -}
-next = error "TODO"
+next :: Weekday -> Weekday
+next Sunday = Monday
+next d = succ d
 
 {- | Implement a function that calculates number of days from the first
 weekday to the second.
@@ -89,7 +97,13 @@ weekday to the second.
 >>> daysTo Friday Wednesday
 5
 -}
-daysTo = error "TODO"
+daysTo :: Weekday -> Weekday -> Int
+daysTo wd1 wd2 = daysToRec wd1 wd2 0
+
+daysToRec :: Weekday -> Weekday -> Int -> Int
+daysToRec wd1 wd2 acc
+  | wd1 == wd2 = acc
+  | otherwise = daysToRec (next wd1) wd2 (acc + 1)
 
 {-
 
@@ -105,10 +119,12 @@ newtype Gold = Gold
 
 -- | Addition of gold coins.
 instance Semigroup Gold where
+  (<>) (Gold x) (Gold y) = Gold (x + y)
+
 
 
 instance Monoid Gold where
-
+  mempty  = Gold 0
 
 {- | A reward for completing a difficult quest says how much gold
 you'll receive and whether you'll get a special reward.
@@ -122,10 +138,10 @@ data Reward = Reward
     } deriving (Show, Eq)
 
 instance Semigroup Reward where
-
+  (<>) (Reward rg1 rs1) (Reward rg2 rs2) = Reward ((<>) rg1 rg2) (rs1 || rs2)
 
 instance Monoid Reward where
-
+  mempty = Reward (Gold 0) False
 
 {- | 'List1' is a list that contains at least one element.
 -}
@@ -134,6 +150,7 @@ data List1 a = List1 a [a]
 
 -- | This should be list append.
 instance Semigroup (List1 a) where
+  (<>) (List1 x xs) (List1 y ys)  = List1 x (xs <> [y] <> ys)
 
 
 {- | Does 'List1' have the 'Monoid' instance? If no then why?
@@ -156,10 +173,14 @@ monsters, you should get a combined treasure and not just the first
 🕯 HINT: You may need to add additional constraints to this instance
   declaration.
 -}
-instance Semigroup (Treasure a) where
+instance (Semigroup a) => Semigroup (Treasure a) where
+  (<>) a NoTreasure = a
+  (<>) NoTreasure b = b
+  (<>) (SomeTreasure a) (SomeTreasure b) = SomeTreasure $ a <> b
 
 
-instance Monoid (Treasure a) where
+instance (Monoid a) => Monoid (Treasure a) where
+  mempty = NoTreasure
 
 
 {- | Abstractions are less helpful if we can't write functions that
@@ -178,8 +199,9 @@ together only different elements.
 Product {getProduct = 6}
 
 -}
-appendDiff3 = error "TODO"
-
+appendDiff3 :: (Semigroup a, Eq a) => a -> a -> a -> a
+appendDiff3 a b c = foldl1' (<>) . nub $ [a ,b, c]
+  
 {-
 
 In the next block of tasks, implement 'Foldable' instances for all
@@ -206,12 +228,23 @@ types that can have such an instance.
   and uncomment all commented tests. But do this only after you
   implement instances! No spoilers :)
 -}
+-- foldr :: (a -> b -> b) -> b -> t a -> b
+-- foldMap :: Monoid m => (a -> m) -> t a -> m
 
--- instance Foldable Weekday where
+--instance Foldable Weekday where
+
 -- instance Foldable Gold where
 -- instance Foldable Reward where
--- instance Foldable List1 where
--- instance Foldable Treasure where
+instance Foldable List1 where
+  foldr :: (a -> b -> b) -> b -> List1 a -> b
+  foldr f start (List1 x xs) = foldr f (f x start) xs 
+  
+instance Foldable Treasure where
+  foldr _ start NoTreasure = start
+  foldr f start (SomeTreasure x) = f x start
+
+  foldMap _ NoTreasure = mempty 
+  foldMap f (SomeTreasure x) = f x
 
 {-
 
